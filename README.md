@@ -6,7 +6,7 @@ Tartalomjegyzék
 Bevezetés
 
 1.1 A projekt célja
-1.3 A rendszer jelentősége és alkalmazási területei
+1.2 A rendszer jelentősége és alkalmazási területei
 
 Elméleti háttér
 
@@ -43,8 +43,8 @@ Megvalósítás
 Tesztelés és eredmények
 
 7.1 Tesztelési környezet
-7.3 Eredmények kiértékelése
-7.4 Hibák és korlátok
+7.2 Eredmények kiértékelése
+7.3 Hibák és korlátok
 
 Továbbfejlesztési lehetőségek
 
@@ -53,6 +53,6 @@ Továbbfejlesztési lehetőségek
 
 Irodalomjegyzék
 Mellékletek
-11.1 Teljes forráskód
-11.2 Képernyőképek
-11.3 Egyéb dokumentáció
+9.1 Teljes forráskód
+9.2 Képernyőképek
+9.3 Egyéb dokumentáció
