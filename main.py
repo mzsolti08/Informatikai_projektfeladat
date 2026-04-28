@@ -1,43 +1,42 @@
 import cv2
-from modules.camera_module import init_camera
-from modules.face_module import FaceDetector
-from modules.activity_module import ActivityDetector
-from utils.drawing_utils import draw_face, draw_activity
-from utils.logger import log_event
+from ultralytics import YOLO
 
-def main():
-    cap = init_camera()
-    face_detector = FaceDetector()
-    activity_detector = ActivityDetector()
+model = YOLO("yolov8n.pt")
 
-    last_logged = set()
+cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
-        faces = face_detector.detect_and_track(frame)
-        activity = activity_detector.detect(frame)
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
 
-        for (top, right, bottom, left, name) in faces:
-            draw_face(frame, top, right, bottom, left, name)
+    frame = cv2.flip(frame, 1)
 
-            # ne logoljon folyamatosan
-            key = (name, activity)
-            if key not in last_logged:
-                log_event(name, activity)
-                last_logged.add(key)
+    # YOLO felismerés
+    results = model(frame, stream=True)
 
-        draw_activity(frame, activity)
+    for r in results:
+        for box in r.boxes:
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            conf = float(box.conf[0])
+            cls = int(box.cls[0])
 
-        cv2.imshow("Face & Activity System", frame)
+            label = model.names[cls]
 
-        if cv2.waitKey(1) == 27:
-            break
+            text = f"{label} {conf:.2f}"
 
-    cap.release()
-    cv2.destroyAllWindows()
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0,255,0), 2)
+            cv2.putText(frame, text, (x1, y1-10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
 
-if __name__ == "__main__":
-    main()
+    cv2.imshow("AI Object Detection", frame)
+
+    # ESC = kilépés
+    if cv2.waitKey(1) == 27:
+        break
+
+cap.release()
+cv2.destroyAllWindows()
