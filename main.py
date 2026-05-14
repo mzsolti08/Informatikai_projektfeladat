@@ -1,17 +1,20 @@
 import cv2
 from ultralytics import YOLO
+from activity_logger import ActivityLogger
 
-# YOLO
 model = YOLO("yolov8n.pt")
 
-# Arc detektor (OpenCV)
 face_cascade = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
 
+logger = ActivityLogger()
+
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 cap.set(3, 1280)
 cap.set(4, 720)
+
+activity_text = "NINCS AKTIVITAS"
 
 while True:
     ret, frame = cap.read()
@@ -21,11 +24,14 @@ while True:
     frame = cv2.flip(frame, 1)
 
     # ================= YOLO =================
+
     small = cv2.resize(frame, (640, 360))
     results = model(small, stream=True, verbose=False)
 
     scale_x = frame.shape[1] / 640
     scale_y = frame.shape[0] / 360
+
+    labels = []
 
     for r in results:
         for box in r.boxes:
@@ -40,27 +46,19 @@ while True:
             cls = int(box.cls[0])
             label = model.names[cls]
 
-            # PERSON SZŰRÉS
+            labels.append(label)
+
             if label == "person":
-                w = x2 - x1
-                h = y2 - y1
-
-                if w < 80 or h < 120:
-                    continue
-
-                ratio = w / h
-                if ratio > 1.2 or ratio < 0.3:
-                    continue
-
-                color = (255, 0, 0)  # kék
+                color = (255, 0, 0)
             else:
-                color = (0, 255, 0)  # zöld
+                color = (0, 255, 0)
 
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-            cv2.putText(frame, f"{label} {conf:.2f}", (x1, y1-10),
+            cv2.putText(frame, f"{label} {conf:.2f}", (x1, y1 - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
 
     # ================= FACE DETECTION =================
+
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     faces = face_cascade.detectMultiScale(
@@ -70,13 +68,46 @@ while True:
         minSize=(60, 60)
     )
 
+    face_detected = len(faces) > 0
+
     for (x, y, w, h) in faces:
-        # 🔴 arc külön szín
-        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
+        cv2.rectangle(frame, (x, y), (x+w, y+h), (0,0,255), 2)
         cv2.putText(frame, "face", (x, y-10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
 
-    cv2.imshow("AI Detection (YOLO + Face)", frame)
+    # ================= ACTIVITY =================
+
+    if face_detected and "cell phone" in labels:
+        activity_text = "TELEFONOZIK"
+
+    elif face_detected and "bed" in labels:
+        activity_text = "ALSZIK"
+
+    elif face_detected and "couch" in labels:
+        activity_text = "PIHEN"
+
+    elif face_detected and "laptop" in labels:
+        activity_text = "DOLGOZIK"
+        
+    elif len(faces) >= 2:
+        activity_text = "TOBB SZEMELY"
+
+    elif face_detected:
+        activity_text = "NINCS JELENLET"
+
+    else:
+        activity_text = "NINCS AKTIVITAS"
+
+    # ================= LOG =================
+
+    logger.log(activity_text)
+
+    # ================= UI =================
+
+    cv2.putText(frame, activity_text, (20, 40),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,255), 3)
+
+    cv2.imshow("Tevekenysegfigyelo rendszer", frame)
 
     if cv2.waitKey(1) == 27:
         break
