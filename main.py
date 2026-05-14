@@ -1,6 +1,8 @@
 import cv2
 from ultralytics import YOLO
+import numpy as np
 from activity_logger import ActivityLogger
+from activity_stats import ActivityStats
 
 model = YOLO("yolov8n.pt")
 
@@ -9,6 +11,7 @@ face_cascade = cv2.CascadeClassifier(
 )
 
 logger = ActivityLogger()
+stats = ActivityStats()
 
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 cap.set(3, 1280)
@@ -163,21 +166,45 @@ while True:
         if len(faces) >= 2:
             activity_text = f"TOBB SZEMELY - {activity_text}"
 
+    # ================= STATS ===============
+
+    stats.update(activity_text)
+
     # ================= LOG =================
 
     logger.log(detected_person, activity_text)
 
-    # ================= UI =================
+    # ================= STAT WINDOW =================
+
+    stats_frame = np.zeros((400, 500, 3), dtype=np.uint8)
 
     cv2.putText(
-        frame,
+        stats_frame,
         activity_text,
         (20, 40),
         cv2.FONT_HERSHEY_SIMPLEX,
         1,
         (0,255,255),
-        3
+        2
     )
+
+    y = 100
+
+    for line in stats.get_stats():
+
+        cv2.putText(
+            stats_frame,
+            line,
+            (20, y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (255,255,255),
+            2
+        )
+
+        y += 40
+
+    cv2.imshow("Activity Statisztika", stats_frame)
 
     cv2.imshow("Tevekenysegfigyelo rendszer", frame)
 
