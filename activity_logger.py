@@ -3,14 +3,17 @@ from datetime import datetime
 class ActivityLogger:
     def __init__(self, filename="activity_log.txt"):
         self.filename = filename
-        self.last_activity = ""
+        self.last_entry = ""
 
-    def log(self, activity):
-        if activity != self.last_activity:
+    def log(self, person, activity):
+
+        entry = f"{person} - {activity}"
+
+        if entry != self.last_entry:
 
             now = datetime.now().strftime("%H:%M:%S")
 
             with open(self.filename, "a", encoding="utf-8") as f:
-                f.write(f"{now} - {activity}\n")
+                f.write(f"{now} - {person} - {activity}\n")
 
-            self.last_activity = activity
+            self.last_entry = entry

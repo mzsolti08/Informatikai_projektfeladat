@@ -14,10 +14,36 @@ cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 cap.set(3, 1280)
 cap.set(4, 720)
 
-activity_text = "NINCS AKTIVITAS"
+# ================= FACE TRACKING =================
+
+tracked_faces = {}
+next_face_id = 1
+
+def get_face_id(x, y):
+
+    global next_face_id
+
+    for face_id, (px, py) in tracked_faces.items():
+
+        dist = ((x - px) ** 2 + (y - py) ** 2) ** 0.5
+
+        if dist < 80:
+            tracked_faces[face_id] = (x, y)
+            return face_id
+
+    new_id = f"Face_{next_face_id}"
+    tracked_faces[new_id] = (x, y)
+
+    next_face_id += 1
+
+    return new_id
+
+# ================= MAIN LOOP =================
 
 while True:
+
     ret, frame = cap.read()
+
     if not ret:
         break
 
@@ -35,6 +61,7 @@ while True:
 
     for r in results:
         for box in r.boxes:
+
             x1, y1, x2, y2 = map(int, box.xyxy[0])
 
             x1 = int(x1 * scale_x)
@@ -44,6 +71,7 @@ while True:
 
             conf = float(box.conf[0])
             cls = int(box.cls[0])
+
             label = model.names[cls]
 
             labels.append(label)
@@ -54,8 +82,16 @@ while True:
                 color = (0, 255, 0)
 
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-            cv2.putText(frame, f"{label} {conf:.2f}", (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+
+            cv2.putText(
+                frame,
+                f"{label} {conf:.2f}",
+                (x1, y1 - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                color,
+                2
+            )
 
     # ================= FACE DETECTION =================
 
@@ -68,44 +104,79 @@ while True:
         minSize=(60, 60)
     )
 
-    face_detected = len(faces) > 0
+    detected_person = "UNKNOWN"
 
     for (x, y, w, h) in faces:
+
+        center_x = x + w // 2
+        center_y = y + h // 2
+
+        face_id = get_face_id(center_x, center_y)
+
+        detected_person = face_id
+
         cv2.rectangle(frame, (x, y), (x+w, y+h), (0,0,255), 2)
-        cv2.putText(frame, "face", (x, y-10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
+
+        cv2.putText(
+            frame,
+            face_id,
+            (x, y - 10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0,0,255),
+            2
+        )
+
+    face_detected = len(faces) > 0
 
     # ================= ACTIVITY =================
 
-    if face_detected and "cell phone" in labels:
-        activity_text = "TELEFONOZIK"
+    activity_rules = {
+        "cell phone": "TELEFONOZIK",
+        "tv": "TV-T NEZ",
+        "book": "OLVAS",
+        "bottle": "ISZIK",
+        "laptop": "DOLGOZIK",
+        "couch": "PIHEN",
+        "chair": "PIHEN",
+        "bed": "ALSZIK"
+    }
 
-    elif face_detected and "bed" in labels:
-        activity_text = "ALSZIK"
+    activity_text = "NINCS AKTIVITAS"
 
-    elif face_detected and "couch" in labels:
-        activity_text = "PIHEN"
+    if len(faces) >= 2:
 
-    elif face_detected and "laptop" in labels:
-        activity_text = "DOLGOZIK"
-        
-    elif len(faces) >= 2:
         activity_text = "TOBB SZEMELY"
 
     elif face_detected:
-        activity_text = "NINCS JELENLET"
 
-    else:
-        activity_text = "NINCS AKTIVITAS"
+        found_activity = False
+
+        for obj, activity in activity_rules.items():
+
+            if obj in labels:
+                activity_text = activity
+                found_activity = True
+                break
+
+        if not found_activity:
+            activity_text = "EMBER DETEKTALVA"
 
     # ================= LOG =================
 
-    logger.log(activity_text)
+    logger.log(detected_person, activity_text)
 
     # ================= UI =================
 
-    cv2.putText(frame, activity_text, (20, 40),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,255), 3)
+    cv2.putText(
+        frame,
+        activity_text,
+        (20, 40),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1,
+        (0,255,255),
+        3
+    )
 
     cv2.imshow("Tevekenysegfigyelo rendszer", frame)
 
