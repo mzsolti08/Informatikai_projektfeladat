@@ -136,6 +136,8 @@ while True:
         "tv": "TV-T NEZ",
         "book": "OLVAS",
         "bottle": "ISZIK",
+        "cup": "KÁVÉZIK",
+        "keyboard": "GEPPEL DOLGOZIK",
         "laptop": "DOLGOZIK",
         "couch": "PIHEN",
         "chair": "PIHEN",
@@ -144,11 +146,7 @@ while True:
 
     activity_text = "NINCS AKTIVITAS"
 
-    if len(faces) >= 2:
-
-        activity_text = "TOBB SZEMELY"
-
-    elif face_detected:
+    if face_detected:
 
         found_activity = False
 
@@ -161,6 +159,9 @@ while True:
 
         if not found_activity:
             activity_text = "EMBER DETEKTALVA"
+
+        if len(faces) >= 2:
+            activity_text = f"TOBB SZEMELY - {activity_text}"
 
     # ================= LOG =================
 
